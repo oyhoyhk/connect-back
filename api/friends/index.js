@@ -8,4 +8,5 @@ friends.patch('/tags', friendsCtrl.removeTag);
 friends.get('/recommend', friendsCtrl.getRecommend);
 friends.post('/request', friendsCtrl.friendRequest);
 friends.get('/friends_list', friendsCtrl.requestFriendsList);
+friends.get('/messages', friendsCtrl.requestMessagesList);
 module.exports = friends;

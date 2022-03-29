@@ -60,15 +60,21 @@ exports.getRecommend = async (req, res) => {
 
 exports.friendRequest = async (req, res) => {
 	let { sender, receiver } = req.body;
+	delete sender.username;
 	const [searchResult, fields] = await connection.query('SELECT * FROM friend_request WHERE SENDER=? AND RECEIVER=? ', [
 		sender.uid,
-		receiver,
+		receiver.uid,
 	]);
 	if (searchResult.length !== 0) return res.status(409);
 
-	await connection.query('INSERT INTO friend_request SET SENDER=?, RECEIVER=?', [sender.uid, receiver]);
+	await connection.query('INSERT INTO friend_request SET SENDER=?, SENDER_INFO=?, RECEIVER=?, RECEIVER_INFO=?', [
+		sender.uid,
+		JSON.stringify(sender),
+		receiver.uid,
+		JSON.stringify(receiver),
+	]);
 
-	const [[{ sid }]] = await connection.query('SELECT sid from socket_sessions where uid = ? ', receiver);
+	const [[{ sid }]] = await connection.query('SELECT sid from socket_sessions where uid = ? ', receiver.uid);
 	req.io.to(sid).emit('friend_request', sender);
 
 	return res.status(200);
@@ -81,6 +87,13 @@ exports.requestFriendsList = async (req, res) => {
 		uid
 	);
 
+	res.send(result);
+};
+exports.requestMessagesList = async (req, res) => {
+	const uid = Number(req.query.uid);
+	if (isNaN(uid)) return;
+	const [result] = await connection.query('SELECT SENDER_INFO FROM friend_request where RECEIVER=?', uid);
+	console.log(result);
 	res.send(result);
 };
 function RandomizeResult(list) {

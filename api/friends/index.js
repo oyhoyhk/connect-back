@@ -9,4 +9,7 @@ friends.get('/recommend', friendsCtrl.getRecommend);
 friends.post('/request', friendsCtrl.friendRequest);
 friends.get('/friends_list', friendsCtrl.requestFriendsList);
 friends.get('/messages', friendsCtrl.requestMessagesList);
+friends.post('/messages', friendsCtrl.acceptFriendRequest);
+friends.delete('/messages', friendsCtrl.refuseFriendRequest);
+
 module.exports = friends;

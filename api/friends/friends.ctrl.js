@@ -96,6 +96,37 @@ exports.requestMessagesList = async (req, res) => {
 	console.log(result);
 	res.send(result);
 };
+
+exports.acceptFriendRequest = async (req, res) => {
+	const { sender, receiver } = req.body;
+
+	await connection.query('INSERT INTO friends_list set uid=?, fuid=?', [sender, receiver]);
+	await connection.query('INSERT INTO friends_list set uid=?, fuid=?', [receiver, sender]);
+
+	await connection.query('DELETE FROM friend_request WHERE RECEIVER=? AND SENDER=?', [receiver, sender]);
+
+	const response = {};
+
+	const [messagesList] = await connection.query('SELECT * from friend_request WHERE RECEIVER=?', receiver);
+
+	const [friendsList] = await connection.query(
+		'SELECT idx as uid, nickname, profileImage, tags from users where users.idx in (SELECT fuid as uid FROM friends_list where uid=?)',
+		receiver
+	);
+	response.messagesList = messagesList;
+	response.friendsList = friendsList;
+
+	res.send(response);
+};
+
+exports.refuseFriendRequest = async (req, res) => {
+	const sender = Number(req.query.sender);
+	const receiver = Number(req.query.receiver);
+	await connection.query('DELETE FROM friend_request WHERE RECEIVER=? AND SENDER=?', [receiver, sender]);
+	const [messagesList] = await connection.query('SELECT * from friend_request WHERE RECEIVER=?', receiver);
+
+	res.send(messagesList);
+};
 function RandomizeResult(list) {
 	let result = [];
 

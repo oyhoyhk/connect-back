@@ -3,8 +3,8 @@ const bcrypt = require('bcrypt');
 
 exports.login = async (req, res) => {
 	const { username, password } = req.body;
+	if (!username || !password) return res.status(409).send('wrong info');
 	const [[result]] = await connection.query(`SELECT idx, password, nickname, profileImage FROM users where username = ?`, username);
-
 	if (!result) return res.status(400).send('error');
 
 	const match = bcrypt.compareSync(password, result.password);
@@ -33,29 +33,25 @@ exports.duplicateCheck = async (req, res) => {
 	res.send(result.exist.toString());
 };
 
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
 	const info = { ...req.body };
 	info.password = bcrypt.hashSync(req.body.password, 10);
 	info.profileImage = req.file ? req.file.filename : '';
 
 	if (info.nickname === '') info.nickname = info.username;
 
-	connection.query(`INSERT INTO users SET ?`, info, (err, result) => {
+	const [result] = await connection.query(`INSERT INTO users SET ?`, info);
+	console.log(result);
+
+	info.uid = result.insertId;
+	delete info.password;
+	req.session.user = info;
+	req.session.save(err => {
 		if (err) {
-			console.error('In auth.ctrl.js register INSERT query');
-			console.error(err);
-			return;
+			console.log(err);
+			return res.status(500);
 		}
-		info.uid = result.insertId;
-		delete info.password;
-		req.session.user = info;
-		req.session.save(err => {
-			if (err) {
-				console.log(err);
-				return res.status(500);
-			}
-			res.send(info);
-		});
+		res.send(info);
 	});
 };
 

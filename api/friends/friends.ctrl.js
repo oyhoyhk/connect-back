@@ -47,10 +47,17 @@ exports.getRecommend = async (req, res) => {
 	);
 	if (!searchResult) return;
 	let result = [];
+	let filteredResult = [];
 	if (filter.length !== 0) {
 		result = searchResult.filter(data => {
 			for (let tag of filter) {
 				if (data.tags && data.tags.includes(tag)) return true;
+			}
+			return false;
+		});
+		filteredResult = searchResult.filter(data => {
+			for (let tag of filter) {
+				if (!data.tags || !data.tags.includes(tag)) return true;
 			}
 			return false;
 		});
@@ -60,9 +67,9 @@ exports.getRecommend = async (req, res) => {
 	} else if (result.length === 0) {
 		result = RandomizeResult(searchResult);
 	} else {
-		while (result.length !== 10 && searchResult.length !== 0) {
-			const rand = Math.floor(Math.random() * searchResult.length);
-			const [randomUser] = searchResult.splice(rand, 1);
+		while (result.length !== 10 && filteredResult.length !== 0) {
+			const rand = Math.floor(Math.random() * filteredResult.length);
+			const [randomUser] = filteredResult.splice(rand, 1);
 			result.push(randomUser);
 		}
 	}
@@ -72,10 +79,7 @@ exports.getRecommend = async (req, res) => {
 exports.friendRequest = async (req, res) => {
 	let { sender, receiver } = req.body;
 	delete sender.username;
-	const [searchResult, fields] = await connection.query('SELECT * FROM messages WHERE SENDER=? AND RECEIVER=? ', [
-		sender.uid,
-		receiver.uid,
-	]);
+	const [searchResult] = await connection.query('SELECT * FROM messages WHERE SENDER=? AND RECEIVER=? ', [sender.uid, receiver.uid]);
 	if (searchResult.length !== 0) return res.status(409);
 
 	await connection.query('INSERT INTO messages SET SENDER=?, SENDER_INFO=?, RECEIVER=?, RECEIVER_INFO=?, TYPE="friend"', [
@@ -90,7 +94,7 @@ exports.friendRequest = async (req, res) => {
 		const data = {
 			info: sender,
 			type: 'received',
-			time: new Date().toISOString(),
+			time: new Date().toISOString().slice(0, 10).split('-').join('.'),
 		};
 		req.io.to(sid).emit('friend_request', data);
 	}
@@ -115,8 +119,7 @@ exports.requestMessagesList = async (req, res) => {
 	received.forEach(el => (el.type = 'received'));
 	sendered.forEach(el => (el.type = 'sendered'));
 
-	const result = received.concat(sendered).sort((a, b) => a.CREATED_AT - b.CREATED_AT);
-	console.log(result);
+	const result = received.concat(sendered).sort((a, b) => b.CREATED_AT - a.CREATED_AT);
 	res.send(result);
 };
 
@@ -139,18 +142,42 @@ exports.acceptFriendRequest = async (req, res) => {
 	response.messagesList = messagesList;
 	response.friendsList = friendsList;
 	const [[{ sid }]] = await connection.query(`SELECT sid FROM SOCKET_SESSIONS where uid=?`, sender);
-	const [[receiverInfo]] = await connection.query('SELECT idx as uid, nickname, profileImage, tags FROM USERS where idx=?', receiver);
-	req.io.to(sid).emit('friend_request_accepted', receiverInfo);
+	if (sid) {
+		const [[receiverInfo]] = await connection.query('SELECT idx as uid, nickname, profileImage, tags FROM USERS where idx=?', receiver);
+		req.io.to(sid).emit('friend_request_accepted', receiverInfo);
+	}
 	res.send(response);
 };
 
 exports.refuseFriendRequest = async (req, res) => {
 	const sender = Number(req.query.sender);
 	const receiver = Number(req.query.receiver);
+	const type = req.query.type;
+	console.log('sender : ', sender, 'receiver', receiver, type);
 	await connection.query('DELETE FROM messages WHERE RECEIVER=? AND SENDER=?', [receiver, sender]);
-	const [messagesList] = await connection.query('SELECT * from messages WHERE RECEIVER=? OR SENDER=?', [receiver, receiver]);
 
-	res.send(messagesList);
+	const [received] = await connection.query(
+		'SELECT SENDER_INFO as info, CREATED_AT FROM messages where RECEIVER=?',
+		type === 'refuse' ? receiver : sender
+	);
+	const [sendered] = await connection.query(
+		'SELECT RECEIVER_INFO as info, CREATED_AT FROM messages where SENDER=?',
+		type === 'refuse' ? receiver : sender
+	);
+
+	received.forEach(el => (el.type = 'received'));
+	sendered.forEach(el => (el.type = 'sendered'));
+
+	const [[{ sid }]] = await connection.query(`SELECT sid FROM SOCKET_SESSIONS where uid=?`, type === 'refuse' ? sender : receiver);
+	if (sid && type === 'refuse') {
+		req.io.to(sid).emit('friend_request_refused', receiver);
+	}
+	if (sid && type === 'cancel') {
+		req.io.to(sid).emit('friend_request_canceled', sender);
+	}
+	const result = received.concat(sendered).sort((a, b) => b.CREATED_AT - a.CREATED_AT);
+	console.log(type, result);
+	res.send(result);
 };
 function RandomizeResult(list) {
 	let result = [];

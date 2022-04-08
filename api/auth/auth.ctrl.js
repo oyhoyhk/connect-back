@@ -21,6 +21,7 @@ exports.login = async (req, res) => {
 				console.log(err);
 				return res.status(500);
 			}
+			req.io.emit('someone_login', result.idx);
 			res.send(info);
 		});
 	}
@@ -51,6 +52,7 @@ exports.register = async (req, res) => {
 			console.log(err);
 			return res.status(500);
 		}
+		req.io.emit('someone_login', result.insertId);
 		res.send(info);
 	});
 };
@@ -63,13 +65,20 @@ exports.check = (req, res) => {
 	return res.send(req.session.user);
 };
 
-exports.logout = (req, res) => {
-	console.log('logout');
+exports.logout = async (req, res) => {
+	console.log('logout', req.query);
+	const uid = Number(req.query.uid);
+
+	await connection.query('DELETE FROM socket_sessions where uid=?', uid);
+
+	const [result] = await connection.query('SELECT * FROM socket_sessions');
+
 	req.session.destroy(err => {
 		if (err) {
 			console.error(err);
 			return res.status(500);
 		}
-		res.send();
+		req.io.emit('someone_logout', uid);
 	});
+	res.send('hi');
 };

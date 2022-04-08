@@ -107,7 +107,12 @@ exports.requestFriendsList = async (req, res) => {
 		'SELECT idx as uid, nickname, profileImage, tags from users where users.idx in (SELECT fuid as uid FROM friends_list where uid=?)',
 		uid
 	);
-
+	const [sessions] = await connection.query(`SELECT uid from socket_sessions`);
+	const users = sessions.map(session => session.uid);
+	result.forEach(user => {
+		if (users.includes(user.uid)) user.status = true;
+		else user.status = false;
+	});
 	res.send(result);
 };
 exports.requestMessagesList = async (req, res) => {

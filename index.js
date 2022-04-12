@@ -90,6 +90,17 @@ io.on('connection', async socket => {
 		callback('success');
 		io.of('/').emit('someone_entered', result);
 	});
+
+	socket.on('someone_send_message', async ({ sender, receiver, message }) => {
+		console.log('in somone_send_message : ', sender, receiver, message);
+		await connection.query('INSERT INTO chatting_logs set sender=?, receiver=?, message=?', [sender, receiver, message]);
+		const [[{ sid: other }]] = await connection.query('SELECT * FROM socket_sessions where uid =? ', receiver);
+
+		if (other) {
+			io.to(other).emit('someone_send_message', { sender, receiver, message, time: new Date() });
+		}
+	});
+
 	socket.on('disconnect', reason => {
 		console.log('in socket disconnect');
 		console.log(reason);

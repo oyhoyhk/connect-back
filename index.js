@@ -94,10 +94,27 @@ io.on('connection', async socket => {
 	socket.on('someone_send_message', async ({ sender, receiver, message }) => {
 		console.log('in somone_send_message : ', sender, receiver, message);
 		await connection.query('INSERT INTO chatting_logs set sender=?, receiver=?, message=?', [sender, receiver, message]);
-		const [[{ sid: other }]] = await connection.query('SELECT * FROM socket_sessions where uid =? ', receiver);
+		const [result] = await connection.query('SELECT * FROM socket_sessions where uid =? ', receiver);
 
+		const id = `${Math.min(sender, receiver)}-${Math.max(sender, receiver)}`;
+
+		await connection.query(
+			`INSERT INTO chat_list (sender, receiver, last_message, new_messages) VALUES (?, ?, ?, 0) ON DUPLICATE KEY UPDATE last_message = ?, created_at = now(), new_messages = 0`,
+			[sender, receiver, message, message, sender, receiver]
+		);
+		await connection.query(
+			`INSERT INTO chat_list (sender, receiver, last_message, new_messages) VALUES (?, ?, ?, 0) ON DUPLICATE KEY UPDATE last_message = ?, created_at = now(), new_messages = new_messages + 1`,
+			[receiver, sender, message, message, receiver, sender]
+		);
+		if (result.length === 0) return;
+
+		const [{ sid: other }] = result;
 		if (other) {
-			io.to(other).emit('someone_send_message', { sender, receiver, message, time: new Date() });
+			const [result] = await connection.query(
+				`SELECT receiver as uid, nickname, profileImage, name as chat_name, last_message, new_messages, created_at from chat_list left join users on idx=receiver where sender=? order by created_at desc`,
+				receiver
+			);
+			io.to(other).emit('someone_send_message', result);
 		}
 	});
 

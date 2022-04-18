@@ -30,7 +30,7 @@ exports.login = async (req, res) => {
 exports.duplicateCheck = async (req, res) => {
 	const { username } = req.body;
 
-	const [[result]] = await connection.query(`SELECT EXISTS(SELECT * FROM users WHERE USERNAME = ? ) as exist`, username);
+	const [[result]] = await connection.query(`SELECT EXISTS (SELECT * FROM users WHERE USERNAME = ? ) as exist`, username);
 	res.send(result.exist.toString());
 };
 
@@ -68,7 +68,7 @@ exports.check = (req, res) => {
 exports.logout = async (req, res) => {
 	console.log('logout', req.query);
 	const uid = Number(req.query.uid);
-
+	if (isNaN(uid)) return res.status(404);
 	await connection.query('DELETE FROM socket_sessions where uid=?', uid);
 
 	const [result] = await connection.query('SELECT * FROM socket_sessions');

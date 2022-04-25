@@ -25,55 +25,38 @@ exports.getRecommend = async (req, res) => {
 	const filter = req.query.filter.split('_').filter(el => el !== '');
 	const uid = Number(req.query.uid);
 	if (!filter || !uid) return;
-	const [queryResult1] = await connection.query(`SELECT data from SESSIONS`);
-	const [friendsListQuery] = await connection.query(
-		'SELECT idx as uid from users where users.idx in (SELECT fuid as uid FROM friends_list where uid=?)',
-		uid
+	console.log('in getRecommend', filter, uid);
+	let [result] = await connection.query(
+		'SELECT * FROM (SELECT idx as uid, nickname, profileImage, tags from users where idx in (select uid from socket_sessions)) as R;'
 	);
-	const friendsList = friendsListQuery.map(el => el.uid);
-	const data = queryResult1
-		.reduce((result, cur) => {
-			cur = JSON.parse(cur.data);
-			if (cur.user) {
-				result.push(cur.user.uid);
-			}
-			return result;
-		}, [])
-		.filter(num => num !== uid && !friendsList.includes(num));
+	let [friendsList] = await connection.query('SELECT fuid as uid from friends_list where uid=?', uid);
 
-	if (data.length === 0) return;
-	const [searchResult] = await connection.query(
-		'SELECT idx as uid, username, nickname, profileImage, tags from users where users.idx IN (' + connection.escape(data) + ')'
-	);
-	if (!searchResult) return;
-	let result = [];
-	let filteredResult = [];
+	friendsList = friendsList.map(obj => obj.uid);
+
+	result = result.filter(obj => obj.uid !== uid && !friendsList.includes(obj.uid));
+
+	console.log(result);
+
+	let filterResult = [];
+
 	if (filter.length !== 0) {
-		result = searchResult.filter(data => {
-			for (let tag of filter) {
-				if (data.tags && data.tags.includes(tag)) return true;
+		for (let tag of filter) {
+			for (let person of result) {
+				if (person.tags.includes(tag) && !filterResult.includes(person)) filterResult.push(person);
 			}
-			return false;
-		});
-		filteredResult = searchResult.filter(data => {
-			for (let tag of filter) {
-				if (!data.tags || !data.tags.includes(tag)) return true;
-			}
-			return false;
-		});
-	}
-	if (result.length > 10) {
-		result = RandomizeResult(result);
-	} else if (result.length === 0) {
-		result = RandomizeResult(searchResult);
-	} else {
-		while (result.length !== 10 && filteredResult.length !== 0) {
-			const rand = Math.floor(Math.random() * filteredResult.length);
-			const [randomUser] = filteredResult.splice(rand, 1);
-			result.push(randomUser);
 		}
 	}
-	res.send(result);
+	if (filterResult.length > 10) filterResult = RandomizeResult(filterResult);
+	else {
+		while (filterResult.length < 10 && result.length > 0) {
+			const rand = Math.floor(Math.random() * result.length);
+			let [target] = result.splice(rand, 1);
+
+			if (!filterResult.includes(target)) filterResult.push(target);
+		}
+	}
+
+	res.send(filterResult);
 };
 
 exports.friendRequest = async (req, res) => {
@@ -88,8 +71,7 @@ exports.friendRequest = async (req, res) => {
 		receiver.uid,
 		JSON.stringify(receiver),
 	]);
-
-	const [[{ sid }]] = await connection.query('SELECT sid from socket_sessions where uid = ? ', receiver.uid);
+	const [[{ sid }]] = await connection.query('SELECT sid from socket_sessions where uid = ? ', receiver);
 	if (sid) {
 		const data = {
 			info: sender,

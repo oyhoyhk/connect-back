@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const { createServer } = require('http');
+const path = require('path');
 const ios = require('express-socket.io-session');
 require('dotenv').config();
 const connection = require('./lib/createMysqlConnection');
@@ -38,7 +39,8 @@ const sessionMiddleware = session({
 	connectionLimit: 500,
 });
 app.use(sessionMiddleware);
-
+const buildDirectory = path.join(__dirname, '../connect-frontend/build');
+app.use(express.static(buildDirectory));
 io.use(ios(sessionMiddleware, { autoSave: true }));
 
 // app.use(morgan('combined'));
@@ -51,10 +53,13 @@ app.use((req, res, next) => {
 	req.io = io;
 	return next();
 });
+app.get('/', function (req, res, next) {
+	res.sendFile(path.join(__dirname, '/connect-frontend/build', 'index.html'));
+});
 app.use('/api', api);
 io.on('connection', async socket => {
 	const session = socket.request.session;
-	console.log(socket.id);
+	console.log('in connection', socket.id);
 	let uid = socket.handshake.query.uid;
 	console.log('connection uid', uid);
 	if (uid !== 'null') {
@@ -116,6 +121,8 @@ io.on('connection', async socket => {
 		}
 	});
 	socket.on('leave_chat_hall', async username => {
+		console.log('in leave_chat_hall', username);
+		if (!username) return;
 		await connection.query('DELETE FROM chat_hall WHERE username = ?', username);
 		console.log(`${username} has left`);
 		socket.broadcast.emit('someone_left', username);
@@ -123,7 +130,7 @@ io.on('connection', async socket => {
 	socket.on('disconnect', reason => {
 		console.log('in socket disconnect');
 		console.log(reason);
-		console.log(socket.id);
+		console.log('in disconnect', socket.id);
 	});
 });
 

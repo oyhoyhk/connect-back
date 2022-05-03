@@ -95,6 +95,10 @@ exports.requestFriendsList = async (req, res) => {
 		if (users.includes(user.uid)) user.status = true;
 		else user.status = false;
 	});
+	result.sort((a, b) => {
+		if (a.status && !b.status) return -1;
+		else if (!a.status && b.status) return 1;
+	});
 	res.send(result);
 };
 exports.requestMessagesList = async (req, res) => {

@@ -53,9 +53,7 @@ app.use((req, res, next) => {
 	req.io = io;
 	return next();
 });
-app.get('/', function (req, res, next) {
-	res.sendFile(path.join(__dirname, '/connect-frontend/build', 'index.html'));
-});
+
 app.use('/api', api);
 io.on('connection', async socket => {
 	const session = socket.request.session;
@@ -133,7 +131,9 @@ io.on('connection', async socket => {
 		console.log('in disconnect', socket.id);
 	});
 });
-
+app.get('/*', function (req, res, next) {
+	res.sendFile(path.join(__dirname, '../connect-frontend/build', 'index.html'));
+});
 const Listening = () => {
 	console.log(`Listening on: http://localhost:${PORT}`);
 };

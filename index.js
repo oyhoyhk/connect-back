@@ -71,10 +71,10 @@ io.on('connection', async socket => {
 		if (result.length !== 0) {
 			await connection.query('UPDATE SOCKET_SESSIONS SET sid=? where uid= ?', [sid, uid]);
 
-			console.log('socket_sessions UPDATE');
+			console.log('SOCKET_SESSIONS UPDATE');
 		} else {
 			await connection.query('INSERT INTO SOCKET_SESSIONS SET uid=?, sid=?', [uid, sid]);
-			console.log('socket_sessions INSERT	');
+			console.log('SOCKET_SESSIONS INSERT	');
 		}
 	}
 
@@ -97,7 +97,7 @@ io.on('connection', async socket => {
 	socket.on('someone_send_message', async ({ sender, receiver, message }) => {
 		console.log('in somone_send_message : ', sender, receiver, message);
 		await connection.query('INSERT INTO chatting_logs set sender=?, receiver=?, message=?', [sender, receiver, message]);
-		const [result] = await connection.query('SELECT * FROM socket_sessions where uid =? ', receiver);
+		const [result] = await connection.query('SELECT * FROM SOCKET_SESSIONS where uid =? ', receiver);
 
 		await connection.query(
 			`INSERT INTO chat_list (sender, receiver, last_message, new_messages) VALUES (?, ?, ?, 0) ON DUPLICATE KEY UPDATE last_message = ?, created_at = now(), new_messages = 0`,

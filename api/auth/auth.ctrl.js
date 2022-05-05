@@ -69,9 +69,9 @@ exports.logout = async (req, res) => {
 	console.log('logout', req.query);
 	const uid = Number(req.query.uid);
 	if (isNaN(uid)) return res.status(404);
-	await connection.query('DELETE FROM socket_sessions where uid=?', uid);
+	await connection.query('DELETE FROM SOCKET_SESSIONS where uid=?', uid);
 
-	const [result] = await connection.query('SELECT * FROM socket_sessions');
+	const [result] = await connection.query('SELECT * FROM SOCKET_SESSIONS');
 
 	req.session.destroy(err => {
 		if (err) {

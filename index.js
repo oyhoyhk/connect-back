@@ -24,7 +24,7 @@ const io = new Server(httpServer, {
 });
 
 const options = {
-	hots: 'localhost',
+	host: 'localhost',
 	user: 'root',
 	password: '1234',
 	database: 'connectDB',

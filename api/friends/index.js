@@ -1,6 +1,6 @@
 const friends = require('express').Router();
 
-const friendsCtrl = require('./friends.Ctrl');
+const friendsCtrl = require('./friends.ctrl');
 
 friends.get('/tags/:uid', friendsCtrl.loadTags);
 friends.post('/tags', friendsCtrl.addTag);

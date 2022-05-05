@@ -27,7 +27,7 @@ exports.getRecommend = async (req, res) => {
 	if (!filter || !uid) return;
 	console.log('in getRecommend', filter, uid);
 	let [result] = await connection.query(
-		'SELECT * FROM (SELECT idx as uid, nickname, profileImage, tags from users where idx in (select uid from socket_sessions)) as R;'
+		'SELECT * FROM (SELECT idx as uid, nickname, profileImage, tags from users where idx in (select uid from SOCKET_SESSIONS)) as R;'
 	);
 	let [friendsList] = await connection.query('SELECT fuid as uid from friends_list where uid=?', uid);
 
@@ -71,7 +71,7 @@ exports.friendRequest = async (req, res) => {
 		receiver.uid,
 		JSON.stringify(receiver),
 	]);
-	const [[{ sid }]] = await connection.query('SELECT sid from socket_sessions where uid = ? ', receiver);
+	const [[{ sid }]] = await connection.query('SELECT sid from SOCKET_SESSIONS where uid = ? ', receiver);
 	if (sid) {
 		const data = {
 			info: sender,
@@ -89,7 +89,7 @@ exports.requestFriendsList = async (req, res) => {
 		'SELECT idx as uid, nickname, profileImage, tags from users where users.idx in (SELECT fuid as uid FROM friends_list where uid=?)',
 		uid
 	);
-	const [sessions] = await connection.query(`SELECT uid from socket_sessions`);
+	const [sessions] = await connection.query(`SELECT uid from SOCKET_SESSIONS`);
 	const users = sessions.map(session => session.uid);
 	result.forEach(user => {
 		if (users.includes(user.uid)) user.status = true;

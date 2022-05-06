@@ -42,7 +42,7 @@ exports.getRecommend = async (req, res) => {
 	if (filter.length !== 0) {
 		for (let tag of filter) {
 			for (let person of result) {
-				if (person.tags.includes(tag) && !filterResult.includes(person)) filterResult.push(person);
+				if (person.tag && person.tags.includes(tag) && !filterResult.includes(person)) filterResult.push(person);
 			}
 		}
 	}

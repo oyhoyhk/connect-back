@@ -82,3 +82,8 @@ exports.logout = async (req, res) => {
 	});
 	res.send('hi');
 };
+
+exports.modify = async (req, res) => {
+	const info = { ...req.body };
+	console.log(info);
+};

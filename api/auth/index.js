@@ -8,4 +8,5 @@ auth.post('/register', multerMiddleware, authCtrl.register);
 auth.get('/check', authCtrl.check);
 auth.post('/duplicate_check', authCtrl.duplicateCheck);
 auth.post('/logout', authCtrl.logout);
+auth.post('/modify', authCtrl.modify);
 module.exports = auth;

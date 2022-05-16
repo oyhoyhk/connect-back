@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 
 exports.login = async (req, res) => {
 	const { username, password } = req.body;
+	console.log(username, password);
 	if (!username || !password) return res.status(409).send('wrong info');
 	const [[result]] = await connection.query(`SELECT idx, password, nickname, profileImage FROM users where username = ?`, username);
 	if (!result) return res.status(400).send('error');
@@ -42,7 +43,6 @@ exports.register = async (req, res) => {
 	if (info.nickname === '') info.nickname = info.username;
 
 	const [result] = await connection.query(`INSERT INTO users SET ?`, info);
-	console.log(result);
 
 	info.uid = result.insertId;
 	delete info.password;
@@ -61,12 +61,10 @@ exports.check = (req, res) => {
 	if (!req.session.user) {
 		return res.status(401);
 	}
-	console.log('in check', req.session);
 	return res.send(req.session.user);
 };
 
 exports.logout = async (req, res) => {
-	console.log('logout', req.query);
 	const uid = Number(req.query.uid);
 	if (isNaN(uid)) return res.status(404);
 	await connection.query('DELETE FROM SOCKET_SESSIONS where uid=?', uid);
@@ -90,7 +88,6 @@ exports.modify = async (req, res) => {
 	if (info.password !== '') {
 		info.password = bcrypt.hashSync(info.password, 10);
 	}
-	console.log(info);
 
 	try {
 		if (info.profileImage !== '' && fs.existsSync('./profiles/' + info.previousProfileImage)) {
@@ -121,6 +118,5 @@ exports.modify = async (req, res) => {
 		Number(info.idx)
 	);
 
-	console.log(result);
 	res.send(result);
 };

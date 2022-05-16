@@ -9,6 +9,5 @@ exports.guestNumber = (req, res) => {
 
 exports.userInfo = async (req, res) => {
 	const [result] = await connection.query('SELECT * FROM chat_hall');
-	console.log('in userinfo', result);
 	res.send(result);
 };

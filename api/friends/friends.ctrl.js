@@ -11,7 +11,6 @@ exports.loadTags = async (req, res) => {
 exports.addTag = async (req, res) => {
 	const { tags, uid } = req.body;
 	const [result] = await connection.query('UPDATE users SET tags=? where idx= ?', [tags, uid]);
-	console.log('in addTags : ', result);
 	return res.status(200);
 };
 
@@ -25,7 +24,6 @@ exports.getRecommend = async (req, res) => {
 	const filter = req.query.filter.split('_').filter(el => el !== '');
 	const uid = Number(req.query.uid);
 	if (!filter || !uid) return;
-	console.log('in getRecommend', filter, uid);
 	let [result] = await connection.query(
 		'SELECT * FROM (SELECT idx as uid, nickname, profileImage, tags from users where idx in (select uid from SOCKET_SESSIONS)) as R;'
 	);
@@ -34,8 +32,6 @@ exports.getRecommend = async (req, res) => {
 	friendsList = friendsList.map(obj => obj.uid);
 
 	result = result.filter(obj => obj.uid !== uid && !friendsList.includes(obj.uid));
-
-	console.log(result);
 
 	let filterResult = [];
 
@@ -144,7 +140,6 @@ exports.refuseFriendRequest = async (req, res) => {
 	const sender = Number(req.query.sender);
 	const receiver = Number(req.query.receiver);
 	const type = req.query.type;
-	console.log('sender : ', sender, 'receiver', receiver, type);
 	await connection.query('DELETE FROM messages WHERE RECEIVER=? AND SENDER=?', [receiver, sender]);
 
 	const [received] = await connection.query(
@@ -167,7 +162,6 @@ exports.refuseFriendRequest = async (req, res) => {
 		req.io.to(sid).emit('friend_request_canceled', sender);
 	}
 	const result = received.concat(sendered).sort((a, b) => b.CREATED_AT - a.CREATED_AT);
-	console.log(type, result);
 	res.send(result);
 };
 function RandomizeResult(list) {

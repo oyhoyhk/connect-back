@@ -57,36 +57,26 @@ app.use((req, res, next) => {
 app.use('/api', api);
 io.on('connection', async socket => {
 	const session = socket.request.session;
-	console.log('in connection', socket.id);
 	let uid = socket.handshake.query.uid;
-	console.log('connection uid', uid);
 	if (uid !== 'null') {
 		uid = Number(uid);
 		const sid = socket.id;
 
 		const [result] = await connection.query('SELECT * FROM SOCKET_SESSIONS WHERE uid=?', uid);
 
-		console.log(result);
-
 		if (result.length !== 0) {
 			await connection.query('UPDATE SOCKET_SESSIONS SET sid=? where uid= ?', [sid, uid]);
-
-			console.log('SOCKET_SESSIONS UPDATE');
 		} else {
 			await connection.query('INSERT INTO SOCKET_SESSIONS SET uid=?, sid=?', [uid, sid]);
-			console.log('SOCKET_SESSIONS INSERT	');
 		}
 	}
 
 	socket.on('msg', data => {
-		console.log(socket.id);
-		console.log(data);
 		socket.broadcast.emit('broadcastMsg', data);
 	});
 
 	socket.on('enter', async (data, callback) => {
 		const { username, nickname, profileImage } = data;
-		console.log('socket.on enter : ', username, nickname, profileImage);
 		if (!username) return;
 		await connection.query(`INSERT INTO chat_hall set username=?, nickname=?, profileImage=?`, [username, nickname, profileImage]);
 		const [result] = await connection.query(`SELECT * FROM chat_hall`);
@@ -95,7 +85,6 @@ io.on('connection', async socket => {
 	});
 
 	socket.on('someone_send_message', async ({ sender, receiver, message }) => {
-		console.log('in somone_send_message : ', sender, receiver, message);
 		await connection.query('INSERT INTO chatting_logs set sender=?, receiver=?, message=?', [sender, receiver, message]);
 		const [result] = await connection.query('SELECT * FROM SOCKET_SESSIONS where uid =? ', receiver);
 
@@ -119,16 +108,9 @@ io.on('connection', async socket => {
 		}
 	});
 	socket.on('leave_chat_hall', async username => {
-		console.log('in leave_chat_hall', username);
 		if (!username) return;
 		await connection.query('DELETE FROM chat_hall WHERE username = ?', username);
-		console.log(`${username} has left`);
 		socket.broadcast.emit('someone_left', username);
-	});
-	socket.on('disconnect', reason => {
-		console.log('in socket disconnect');
-		console.log(reason);
-		console.log('in disconnect', socket.id);
 	});
 });
 app.get('/*', function (req, res, next) {

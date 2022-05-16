@@ -3,7 +3,6 @@ const connection = require('../../lib/createMysqlConnection');
 exports.requestChattingLogs = async (req, res) => {
 	const sender = Number(req.query.sender);
 	const receiver = Number(req.query.receiver);
-	console.log(sender, receiver);
 	await connection.query('UPDATE chat_list set new_messages=0 where sender=? and receiver=?', [sender, receiver]);
 	let [result] = await connection.query(
 		'SELECT * from chatting_logs where sender=? && receiver=? or sender=? && receiver=? ORDER BY created_at DESC LIMIT 10',
@@ -27,7 +26,6 @@ exports.requestChattingLogs = async (req, res) => {
 
 exports.requestChattingList = async (req, res) => {
 	const uid = Number(req.query.uid);
-	console.log('requestChattingList', uid);
 	const [result] = await connection.query(
 		`SELECT receiver as uid, nickname, profileImage, name as chat_name, last_message, new_messages, created_at from chat_list left join users on idx=receiver where sender=? order by created_at desc`,
 		uid
@@ -41,6 +39,5 @@ exports.requestChattingList = async (req, res) => {
 
 exports.closeChat = async (req, res) => {
 	const { sender, receiver } = req.body;
-	console.log('closeChat', sender, receiver);
 	await connection.query('UPDATE chat_list set new_messages=0 where sender=? and receiver =?', [sender, receiver]);
 };

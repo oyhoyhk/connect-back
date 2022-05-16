@@ -84,6 +84,43 @@ exports.logout = async (req, res) => {
 };
 
 exports.modify = async (req, res) => {
+	const fs = require('fs');
 	const info = { ...req.body };
+	info.profileImage = req.file ? req.file.filename : '';
+	if (info.password !== '') {
+		info.password = bcrypt.hashSync(info.password, 10);
+	}
 	console.log(info);
+
+	try {
+		if (info.profileImage !== '' && fs.existsSync('./profiles/' + info.previousProfileImage)) {
+			fs.unlinkSync('./profiles/' + info.previousProfileImage);
+		}
+	} catch (error) {
+		if (error) {
+			console.log('파일 삭제 에러', error);
+		}
+	}
+
+	function infoToString(info) {
+		let result = '';
+
+		Object.keys(info).forEach(data => {
+			if (data !== 'idx' && data !== 'previousProfileImage' && info[data] !== '') {
+				result += data + '="' + info[data] + '",';
+			}
+		});
+
+		return result.slice(0, result.length - 1);
+	}
+
+	await connection.query(`UPDATE Users SET ${infoToString(info)} WHERE idx=${info.idx}`);
+
+	const [[result]] = await connection.query(
+		'SELECT idx as uid, username, nickname, profileImage from Users WHERE idx=?',
+		Number(info.idx)
+	);
+
+	console.log(result);
+	res.send(result);
 };

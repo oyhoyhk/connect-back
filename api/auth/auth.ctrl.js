@@ -3,7 +3,6 @@ const bcrypt = require('bcrypt');
 
 exports.login = async (req, res) => {
 	const { username, password } = req.body;
-	console.log(username, password);
 	if (!username || !password) return res.status(409).send('wrong info');
 	const [[result]] = await connection.query(`SELECT idx, password, nickname, profileImage FROM users where username = ?`, username);
 	if (!result) return res.status(400).send('error');
@@ -114,7 +113,7 @@ exports.modify = async (req, res) => {
 	await connection.query(`UPDATE Users SET ${infoToString(info)} WHERE idx=${info.idx}`);
 
 	const [[result]] = await connection.query(
-		'SELECT idx as uid, username, nickname, profileImage from Users WHERE idx=?',
+		'SELECT idx as uid, username, nickname, profileImage from users WHERE idx=?',
 		Number(info.idx)
 	);
 

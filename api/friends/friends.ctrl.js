@@ -10,13 +10,13 @@ exports.loadTags = async (req, res) => {
 
 exports.addTag = async (req, res) => {
 	const { tags, uid } = req.body;
-	const [result] = await connection.query('UPDATE users SET tags=? where idx= ?', [tags, uid]);
+	await connection.query('UPDATE users SET tags=? where idx= ?', [tags, uid]);
 	return res.status(200);
 };
 
 exports.removeTag = async (req, res) => {
 	const { tags, uid } = req.body;
-	const [result] = await connection.query('UPDATE users SET tags=? where idx= ?', [tags, uid]);
+	await connection.query('UPDATE users SET tags=? where idx= ?', [tags, uid]);
 	return res.status(200);
 };
 
@@ -24,15 +24,10 @@ exports.getRecommend = async (req, res) => {
 	const filter = req.query.filter.split('_').filter(el => el !== '');
 	const uid = Number(req.query.uid);
 	if (!filter || !uid) return;
-	let [result] = await connection.query(
-		'SELECT * FROM (SELECT idx as uid, nickname, profileImage, tags from users where idx in (select uid from SOCKET_SESSIONS)) as R;'
+	const [result] = await connection.query(
+		`select uid, nickname, profileImage, tags FROM (select * FROM (select uid from socket_sessions where uid not in (select fuid as uid from friends_list where uid=?)) as R where uid not in (select other as uid from block_list where uid=?) and uid not like ?) as RR join users on uid=idx `,
+		[uid, uid, uid]
 	);
-	let [friendsList] = await connection.query('SELECT fuid as uid from friends_list where uid=?', uid);
-
-	friendsList = friendsList.map(obj => obj.uid);
-
-	result = result.filter(obj => obj.uid !== uid && !friendsList.includes(obj.uid));
-
 	let filterResult = [];
 
 	if (filter.length !== 0) {
@@ -174,3 +169,85 @@ function RandomizeResult(list) {
 	}
 	return result;
 }
+
+exports.blockUser = async (req, res) => {
+	const { uid, other, tags } = req.body;
+	const filter = tags.split('_').filter(el => el !== '');
+	await connection.query(`INSERT INTO block_list set uid=?, other=?`, [uid, other]);
+
+	const [result] = await connection.query(
+		`select uid, nickname, profileImage, tags FROM (select * FROM (select uid from socket_sessions where uid not in (select fuid as uid from friends_list where uid=?)) as R where uid not in (select other as uid from block_list where uid=?) and uid not like ?) as RR join users on uid=idx `,
+		[uid, uid, uid]
+	);
+
+	let filterResult = [];
+
+	if (filter.length !== 0) {
+		for (let tag of filter) {
+			for (let person of result) {
+				if (person.tag && person.tags.includes(tag) && !filterResult.includes(person)) filterResult.push(person);
+			}
+		}
+	}
+	if (filterResult.length > 10) filterResult = RandomizeResult(filterResult);
+	else {
+		while (filterResult.length < 10 && result.length > 0) {
+			const rand = Math.floor(Math.random() * result.length);
+			let [target] = result.splice(rand, 1);
+
+			if (!filterResult.includes(target)) filterResult.push(target);
+		}
+	}
+
+	res.send(filterResult);
+};
+
+exports.requestBlockList = async (req, res) => {
+	let { uid } = req.query;
+	if (uid === 'undefined') return;
+	uid = Number(uid);
+	const [result] = await connection.query(
+		`SELECT uid, nickname, profileImage FROM (SELECT other as uid FROM block_list where uid=?) as R join users on uid=idx`,
+		[uid]
+	);
+	res.send(result);
+};
+
+exports.cancelBlock = async (req, res) => {
+	const { uid, other } = req.query;
+
+	await connection.query(`DELETE FROM block_list where uid=? and other=?`, [uid, other]);
+
+	const [result] = await connection.query(
+		`SELECT uid, nickname, profileImage FROM (SELECT other as uid FROM block_list where uid=?) as R join users on uid=idx`,
+		[uid]
+	);
+
+	res.send(result);
+};
+
+exports.deleteFriend = async (req, res) => {
+	const { uid, fuid } = req.query;
+
+	await connection.query(`DELETE FROM friends_list where uid=? and fuid=?`, [uid, fuid]);
+	await connection.query(`DELETE FROM friends_list where uid=? and fuid=?`, [fuid, uid]);
+
+	const [result] = await connection.query(
+		'SELECT idx as uid, nickname, profileImage, tags from users where users.idx in (SELECT fuid as uid FROM friends_list where uid=?)',
+		uid
+	);
+
+	const [sessions] = await connection.query(`SELECT uid from SOCKET_SESSIONS`);
+	const users = sessions.map(session => session.uid);
+	result.forEach(user => {
+		if (users.includes(user.uid)) user.status = true;
+		else user.status = false;
+	});
+	result.sort((a, b) => {
+		if (a.status && !b.status) return -1;
+		else if (!a.status && b.status) return 1;
+	});
+
+	console.log(result);
+	return res.send(result);
+};

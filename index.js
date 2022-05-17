@@ -56,9 +56,8 @@ app.use((req, res, next) => {
 
 app.use('/api', api);
 io.on('connection', async socket => {
-	const session = socket.request.session;
 	let uid = socket.handshake.query.uid;
-	if (uid !== 'null') {
+	if (uid !== 'null' && uid !== undefined) {
 		uid = Number(uid);
 		const sid = socket.id;
 
@@ -70,7 +69,9 @@ io.on('connection', async socket => {
 			await connection.query('INSERT INTO SOCKET_SESSIONS SET uid=?, sid=?', [uid, sid]);
 		}
 	}
-
+	socket.on('login', async uid => {
+		await connection.query('INSERT INTO SOCKET_SESSIONS SET uid=?, sid=?', [uid, socket.id]);
+	});
 	socket.on('msg', data => {
 		socket.broadcast.emit('broadcastMsg', data);
 	});

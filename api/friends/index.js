@@ -11,5 +11,9 @@ friends.get('/friends_list', friendsCtrl.requestFriendsList);
 friends.get('/messages', friendsCtrl.requestMessagesList);
 friends.post('/messages', friendsCtrl.acceptFriendRequest);
 friends.delete('/messages', friendsCtrl.refuseFriendRequest);
+friends.post('/block', friendsCtrl.blockUser);
+friends.get('/block_list', friendsCtrl.requestBlockList);
+friends.delete('/block_list', friendsCtrl.cancelBlock);
+friends.delete('/friends', friendsCtrl.deleteFriend);
 
 module.exports = friends;

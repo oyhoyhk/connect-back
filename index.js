@@ -62,7 +62,6 @@ io.on('connection', async socket => {
 		const sid = socket.id;
 
 		const [result] = await connection.query('SELECT * FROM SOCKET_SESSIONS WHERE uid=?', uid);
-
 		if (result.length !== 0) {
 			await connection.query('UPDATE SOCKET_SESSIONS SET sid=? where uid= ?', [sid, uid]);
 		} else {
